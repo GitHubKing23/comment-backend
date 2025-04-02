@@ -1,18 +1,36 @@
 const express = require("express");
 const router = express.Router();
-const Comment = require("../models/Comment");
-const io = require("../index").io; // Import the Socket.IO instance
+const Comment = require("../models/EthComment");
+const io = require("../server").io;
+const jwt = require("jsonwebtoken");
 
-// @route   GET /api/comments/:postId
-// @desc    Get all comments for a specific post with pagination
+// 🔐 Middleware to verify JWT and extract Ethereum address
+const authenticate = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized: No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // { userId, ethereumAddress, username, roles }
+    next();
+  } catch (err) {
+    console.error("❌ JWT Verification Failed:", err.message);
+    res.status(401).json({ message: "Unauthorized: Invalid token" });
+  }
+};
+
+// GET all comments for a post (paginated)
 router.get("/:postId", async (req, res) => {
-  const page = parseInt(req.query.page) || 1; // Default to page 1
-  const limit = parseInt(req.query.limit) || 10; // Default to 10 comments per page
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
 
   try {
     const comments = await Comment.find({ postId: req.params.postId })
-      .sort({ createdAt: -1 }) // Sort by newest first
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -24,47 +42,52 @@ router.get("/:postId", async (req, res) => {
       currentPage: page,
     });
   } catch (err) {
-    console.error("Error fetching comments:", err);
+    console.error("❌ Error fetching comments:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// @route   POST /api/comments
-// @desc    Create a new comment
-router.post("/", async (req, res) => {
-  const { name, email, content, postId } = req.body;
+// POST a new comment (Ethereum-based)
+router.post("/", authenticate, async (req, res) => {
+  const { content, postId } = req.body;
 
-  if (!name || !email || !content || !postId) {
-    return res.status(400).json({ message: "All fields are required" });
+  if (!content || !postId) {
+    return res.status(400).json({ message: "Content and postId are required" });
   }
 
   try {
-    const newComment = new Comment({ name, email, content, postId });
+    const newComment = new Comment({
+      postId,
+      ethereumAddress: req.user.ethereumAddress,
+      username: req.user.username,
+      content,
+    });
+
     const savedComment = await newComment.save();
 
-    // Notify all clients about the new comment
     io.emit("newComment", savedComment);
-
     res.status(201).json(savedComment);
   } catch (err) {
-    console.error("Error creating comment:", err);
+    console.error("❌ Error creating comment:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
 
-// @route   DELETE /api/comments/:id
-// @desc    Delete a comment by ID
-router.delete("/:id", async (req, res) => {
+// DELETE a comment
+router.delete("/:id", authenticate, async (req, res) => {
   try {
     const comment = await Comment.findById(req.params.id);
-    if (!comment) {
-      return res.status(404).json({ message: "Comment not found" });
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    // Optional: Only allow user to delete their own comment
+    if (comment.ethereumAddress !== req.user.ethereumAddress) {
+      return res.status(403).json({ message: "Forbidden: Not your comment" });
     }
 
-    await comment.remove();
+    await comment.deleteOne();
     res.json({ message: "Comment deleted" });
   } catch (err) {
-    console.error("Error deleting comment:", err);
+    console.error("❌ Error deleting comment:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

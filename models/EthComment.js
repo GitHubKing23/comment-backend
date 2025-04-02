@@ -6,13 +6,15 @@ const commentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    name: {
+    ethereumAddress: {
       type: String,
       required: true,
+      lowercase: true,
+      trim: true,
     },
-    email: {
+    username: {
       type: String,
-      required: true,
+      required: true, // User display name linked to Ethereum login
     },
     content: {
       type: String,
@@ -26,4 +28,4 @@ const commentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Comment", commentSchema);
+module.exports = mongoose.model("EthComment", commentSchema);
