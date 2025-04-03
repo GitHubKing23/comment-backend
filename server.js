@@ -4,9 +4,13 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const socketIo = require("socket.io");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
 const server = http.createServer(app);
+
+// ✅ Setup Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
     origin: "*",
@@ -14,7 +18,7 @@ const io = socketIo(server, {
   },
 });
 
-// Export the io instance for use in routes
+// ✅ Export the io instance
 module.exports.io = io;
 
 // ---------------------
@@ -24,14 +28,14 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------
-// Health Check Route
+// Health Check
 // ---------------------
 app.get("/", (req, res) => {
   res.send("✅ Comment API with Ethereum Auth is live!");
 });
 
 // ---------------------
-// Routes
+// API Routes
 // ---------------------
 const commentRoutes = require("./routes/comments");
 app.use("/api/comments", commentRoutes);
@@ -39,16 +43,22 @@ app.use("/api/comments", commentRoutes);
 // ---------------------
 // MongoDB Connection
 // ---------------------
+const MONGO_URI = process.env.MONGO_URI;
+console.log("📦 Loaded .env file from:", path.resolve(__dirname, ".env"));
+console.log("📂 File exists?", fs.existsSync(path.resolve(__dirname, ".env")));
+console.log(" - PORT:", process.env.PORT);
+console.log(" - MONGO_URI:", MONGO_URI ? "✅ Exists" : "❌ Missing");
+
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("✅ Connected to MongoDB"))
+  .then(() => console.log("✅ Connected to MongoDB Atlas"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // ---------------------
-// Socket.IO
+// Socket.IO Logic
 // ---------------------
 io.on("connection", (socket) => {
   console.log("🟢 New client connected");
@@ -59,9 +69,9 @@ io.on("connection", (socket) => {
 });
 
 // ---------------------
-// Start the Server
+// Start Server on Port 5004 — BIND to 0.0.0.0 for external access
 // ---------------------
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const PORT = process.env.PORT || 5004;
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
 });
