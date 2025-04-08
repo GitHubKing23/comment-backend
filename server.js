@@ -28,7 +28,7 @@ app.use(cors());
 app.use(express.json());
 
 // ---------------------
-// Health Check
+// Health Check (✅ Make sure this route is defined before server starts)
 // ---------------------
 app.get("/", (req, res) => {
   res.send("✅ Comment API with Ethereum Auth is live!");
