@@ -36,6 +36,15 @@ router.get("/:postId", async (req, res) => {
 
     const total = await Comment.countDocuments({ postId: req.params.postId });
 
+    // If no comments are found, return an empty array with pagination details
+    if (comments.length === 0) {
+      return res.json({
+        comments: [],
+        totalPages: 0,
+        currentPage: page,
+      });
+    }
+
     res.json({
       comments,
       totalPages: Math.ceil(total / limit),
