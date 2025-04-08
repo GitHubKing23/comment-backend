@@ -13,7 +13,9 @@ const server = http.createServer(app);
 // ✅ Setup Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
-    origin: "*",
+    origin: process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"  // Allowing local dev frontend
+      : process.env.FRONTEND_URL || "https://sportifyinsider.com", // Use environment variable for production URL
     methods: ["GET", "POST", "DELETE"],
   },
 });
@@ -24,7 +26,16 @@ module.exports.io = io;
 // ---------------------
 // Middleware
 // ---------------------
-app.use(cors());
+// CORS setup for Express routes
+const corsOptions = {
+  origin: process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"  // Allowing local dev frontend
+    : process.env.FRONTEND_URL || "https://sportifyinsider.com", // Use environment variable for production URL
+  methods: ["GET", "POST", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions)); // Applying CORS middleware
 app.use(express.json());
 
 // ---------------------
