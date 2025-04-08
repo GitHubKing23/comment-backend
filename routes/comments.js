@@ -4,6 +4,8 @@ const Comment = require("../models/EthComment");
 const io = require("../server").io;
 const jwt = require("jsonwebtoken");
 
+const MAX_COMMENT_LENGTH = 200; // Character limit for comments
+
 // 🔐 Middleware to verify JWT and extract Ethereum address
 const authenticate = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -29,21 +31,19 @@ router.get("/:postId", async (req, res) => {
   const skip = (page - 1) * limit;
 
   try {
+    // Find comments for the post
     const comments = await Comment.find({ postId: req.params.postId })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const total = await Comment.countDocuments({ postId: req.params.postId });
-
-    // If no comments are found, return an empty array with pagination details
-    if (comments.length === 0) {
-      return res.json({
-        comments: [],
-        totalPages: 0,
-        currentPage: page,
-      });
+    // Return an empty array if no comments are found
+    if (!comments || comments.length === 0) {
+      return res.json({ comments: [], totalPages: 0, currentPage: page });
     }
+
+    // Calculate total pages
+    const total = await Comment.countDocuments({ postId: req.params.postId });
 
     res.json({
       comments,
@@ -62,6 +62,11 @@ router.post("/", authenticate, async (req, res) => {
 
   if (!content || !postId) {
     return res.status(400).json({ message: "Content and postId are required" });
+  }
+
+  // Validate comment length
+  if (content.length > MAX_COMMENT_LENGTH) {
+    return res.status(400).json({ message: `Comment exceeds the ${MAX_COMMENT_LENGTH} character limit` });
   }
 
   try {
