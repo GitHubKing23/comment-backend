@@ -1,4 +1,3 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
@@ -35,10 +34,11 @@ app.get("/", (req, res) => {
   res.send("✅ Comment API is live!");
 });
 
-// API Routes - Ensure these are correctly used
-app.use("/api/comments", fetchComments);  // Handle GET requests for fetching comments
-app.use("/api/comments", createComment);  // Handle POST requests for creating comments
-app.use("/api/comments", deleteComment);  // Handle DELETE requests for deleting comments
+// API Routes
+// Ensure these routes are correctly used and handle each method
+app.use("/api/comments", fetchComments);  // GET route to fetch comments for a post
+app.use("/api/comments", createComment);  // POST route to create a comment
+app.use("/api/comments", deleteComment);  // DELETE route to delete a comment
 
 // MongoDB connection
 const MONGO_URI = process.env.MONGO_URI;
