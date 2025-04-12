@@ -25,8 +25,25 @@ const io = socketIo(server, {
 // Make socket.io instance globally available
 app.set('io', io);
 
+// Define allowed origins for CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://sportifyinsider.com"
+];
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+}));
 app.use(express.json());
 
 // Health check route
@@ -35,7 +52,6 @@ app.get("/", (req, res) => {
 });
 
 // API Routes
-// Ensure these routes are correctly used and handle each method
 app.use("/api/comments", fetchComments);  // GET route to fetch comments for a post
 app.use("/api/comments", createComment);  // POST route to create a comment
 app.use("/api/comments", deleteComment);  // DELETE route to delete a comment
