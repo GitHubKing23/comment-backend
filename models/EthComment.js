@@ -19,6 +19,7 @@ const commentSchema = new mongoose.Schema(
     content: {
       type: String,
       required: true,
+      maxlength: 200,  // Added maxlength constraint directly to the schema
     },
     createdAt: {
       type: Date,
