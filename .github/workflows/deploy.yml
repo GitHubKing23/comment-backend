@@ -1,4 +1,4 @@
-name: Deploy Backend to VPS
+name: Deploy Comment Backend to VPS
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy Sports API to VPS
+    name: Deploy Comment Backend
     runs-on: ubuntu-latest
 
     steps:
@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.VPS_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /home/ubuntu/sportsblogbackend
+            cd /home/ubuntu/comment-backend
             git pull origin main
             npm install
-            pm2 restart sports-api
+            pm2 restart comment-backend
