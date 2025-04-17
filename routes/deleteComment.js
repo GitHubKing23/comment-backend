@@ -1,5 +1,3 @@
-// routes/deleteComment.js
-
 const express = require('express');
 const Comment = require('../models/EthComment');
 const jwt = require('jsonwebtoken');
@@ -42,4 +40,5 @@ router.delete("/:id", authenticate, async (req, res) => {
   }
 });
 
+// Ensure router is exported properly
 module.exports = router;
