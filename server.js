@@ -12,6 +12,7 @@ const deleteComment = require("./routes/deleteComment");
 const app = express();
 const server = http.createServer(app);
 
+// Setup Socket.IO
 const io = socketIo(server, {
   cors: {
     origin: ["http://localhost:3000", "https://sportifyinsider.com"],
@@ -19,9 +20,9 @@ const io = socketIo(server, {
     credentials: true,
   },
 });
-
 app.set("io", io);
 
+// CORS setup
 const allowedOrigins = ["http://localhost:3000", "https://sportifyinsider.com"];
 app.use(cors({
   origin: (origin, callback) => {
@@ -39,42 +40,26 @@ app.use(cors({
 
 app.use(express.json());
 
-// ✅ Logger middleware: IP, Origin, User-Agent
+// ✅ Logger middleware
 app.use((req, res, next) => {
-  const ip =
-    req.headers["x-forwarded-for"] ||
-    req.socket?.remoteAddress ||
-    "unknown";
-
-  const userAgent = req.headers["user-agent"] || "unknown";
-  const origin = req.headers.origin || "direct";
-
-  console.log(
-    `[Logger] ${new Date().toISOString()} | ${req.method} ${req.url} | IP: ${ip} | Origin: ${origin} | UA: ${userAgent}`
-  );
-
-  res.on("finish", () => {
-    console.log(`[Server] Response for ${req.method} ${req.url}: status=${res.statusCode}`);
-  });
-
+  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  console.log(`[Logger] ${req.method} ${req.url} | IP: ${ip}`);
   next();
 });
 
-// ✅ Security middleware: Block unwanted access to /api/comments
+// ✅ Health Check Route
+app.get('/api/comments/health', (req, res) => {
+  res.json({ status: "Comment API is healthy ✅" });
+});
+
+// ✅ Protect /api/comments
 app.use("/api/comments", (req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = ["https://sportifyinsider.com"];
-
-  if (!origin || !allowedOrigins.includes(origin)) {
+  if (!origin || origin !== "https://sportifyinsider.com") {
     console.warn(`[Block] Forbidden /api/comments hit from origin: ${origin}`);
     return res.status(403).json({ error: "Forbidden" });
   }
-
   next();
-});
-
-app.get("/", (req, res) => {
-  res.send("✅ Comment API is live!");
 });
 
 // Routes
@@ -82,21 +67,18 @@ app.use("/api/comments", fetchComments);
 app.use("/api/comments", createComment);
 app.use("/api/comments", deleteComment);
 
-// 404 Fallback
+// 404 fallback
 app.use((req, res) => {
-  console.error(`[Server] 404: ${req.method} ${req.url}`);
   res.status(404).json({ error: "Route not found" });
 });
 
-// DB Connection
-const MONGO_URI = process.env.MONGO_URI;
-mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+// DB connect
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection failed:", err));
 
-// Start Server
+// Start server
 const PORT = process.env.PORT || 5004;
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Comment Server running on http://0.0.0.0:${PORT}`);
 });
