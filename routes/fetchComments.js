@@ -1,13 +1,12 @@
-// C:\Users\User\comment-backend\routes\fetchComments.js
 const express = require("express");
 const mongoose = require("mongoose");
 const Comment = require("../models/EthComment");
 
 const router = express.Router();
 
-// Handle fetching comments for a specific post (paginated)
-router.get("/:postId", async (req, res) => {
-  const { postId } = req.params;
+// ✅ Fetch comments using query parameter (?postId=...)
+router.get('/', async (req, res) => {
+  const { postId } = req.query;   // Switched from req.params to req.query
   console.log(`[fetchComments] Received postId: ${postId}`);
 
   // Validate postId
@@ -16,7 +15,6 @@ router.get("/:postId", async (req, res) => {
     return res.status(400).json({ message: "Missing postId" });
   }
 
-  // Validate ObjectId format
   if (!mongoose.Types.ObjectId.isValid(postId)) {
     console.warn(`[fetchComments] Invalid ObjectId: ${postId}`);
     return res.status(400).json({ message: "Invalid postId format" });
@@ -27,7 +25,6 @@ router.get("/:postId", async (req, res) => {
   const skip = (page - 1) * limit;
 
   try {
-    // Fetch comments for a specific post, with pagination
     const comments = await Comment.find({ postId })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -43,7 +40,7 @@ router.get("/:postId", async (req, res) => {
       currentPage: page,
     });
   } catch (err) {
-    console.error(`[fetchComments] Error fetching comments for postId: ${postId}`, err);
+    console.error(`[fetchComments] Error fetching comments`, err);
     return res.status(500).json({ message: "Server error" });
   }
 });
