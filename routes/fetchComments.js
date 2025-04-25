@@ -6,17 +6,18 @@ const router = express.Router();
 
 // ✅ Fetch comments using query parameter (?postId=...)
 router.get('/', async (req, res) => {
-  const { postId } = req.query;   // Switched from req.params to req.query
+  const { postId } = req.query;
   console.log(`[fetchComments] Received postId: ${postId}`);
 
-  // Validate postId
+  // Validate postId presence
   if (!postId) {
     console.warn("[fetchComments] Missing postId");
     return res.status(400).json({ message: "Missing postId" });
   }
 
+  // Validate ObjectId format
   if (!mongoose.Types.ObjectId.isValid(postId)) {
-    console.warn(`[fetchComments] Invalid ObjectId: ${postId}`);
+    console.warn(`[fetchComments] Invalid ObjectId format: ${postId}`);
     return res.status(400).json({ message: "Invalid postId format" });
   }
 
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 
     const total = await Comment.countDocuments({ postId });
 
-    console.log(`[fetchComments] Found ${comments.length} comments for postId: ${postId}, total: ${total}`);
+    console.log(`[fetchComments] Found ${comments.length} comments for postId ${postId}`);
 
     return res.status(200).json({
       comments,
@@ -40,7 +41,7 @@ router.get('/', async (req, res) => {
       currentPage: page,
     });
   } catch (err) {
-    console.error(`[fetchComments] Error fetching comments`, err);
+    console.error(`[fetchComments] Server error while fetching comments`, err);
     return res.status(500).json({ message: "Server error" });
   }
 });
