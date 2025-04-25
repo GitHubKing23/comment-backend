@@ -13,7 +13,7 @@ const deleteComment = require("./routes/deleteComment");
 const app = express();
 const server = http.createServer(app);
 
-// ✅ Dynamic CORS Origins
+// ✅ Allowed Origins for CORS & Socket.IO
 const allowedOrigins = [
   "http://localhost:3000",
   "https://sportifyinsider.com"
@@ -24,26 +24,20 @@ const io = socketIo(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST", "DELETE"],
-    credentials: true
+    credentials: false    // Set to false unless using cookies
   }
 });
 app.set('io', io);
 
-// ✅ CORS Middleware
+// ✅ Simplified CORS Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`[CORS] Blocked origin: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: allowedOrigins,
   methods: ["GET", "POST", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  credentials: false   // Matches frontend config
 }));
 
+// Body Parser
 app.use(express.json());
 
 // ✅ Health Check Routes
