@@ -72,6 +72,14 @@ router.post("/", authenticate, async (req, res) => {
       return res.status(400).json({ message: err.message });
     }
 
+    if (err.message === "Parent comment not found") {
+      return res.status(err.status || 404).json({ message: err.message });
+    }
+
+    if (err.message === "Parent comment belongs to a different post") {
+      return res.status(err.status || 400).json({ message: err.message });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 });

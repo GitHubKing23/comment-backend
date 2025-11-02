@@ -7,6 +7,7 @@ jest.mock("../models/EthComment", () => ({
   countCommentsByPost: jest.fn(),
   findCommentById: jest.fn(),
   deleteCommentById: jest.fn(),
+  findCommentsTreeByPost: jest.fn(),
 }));
 
 process.env.JWT_SECRET = "test-secret";
@@ -18,6 +19,7 @@ const {
   countCommentsByPost,
   findCommentById,
   deleteCommentById,
+  findCommentsTreeByPost,
 } = require("../models/EthComment");
 
 const { app } = require("../app");
@@ -76,6 +78,36 @@ describe("Comment routes", () => {
         username: "Alice",
       });
     });
+
+    it("creates a reply when parentId is provided", async () => {
+      const token = jwt.sign(
+        { ethereumAddress: "0xabc", username: "Alice", userId: "user-1" },
+        process.env.JWT_SECRET
+      );
+
+      createComment.mockResolvedValue({
+        _id: "456",
+        postId: "post-1",
+        ethereumAddress: "0xabc",
+        username: "Alice",
+        userId: "user-1",
+        content: "Reply",
+        parentId: "123",
+        createdAt: new Date().toISOString(),
+      });
+
+      const response = await request(app)
+        .post("/api/comments")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ postId: "post-1", content: "Reply", parentId: " 123 " });
+
+      expect(response.statusCode).toBe(201);
+      expect(createComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parentId: "123",
+        })
+      );
+    });
   });
 
   describe("GET /api/comments", () => {
@@ -106,6 +138,29 @@ describe("Comment routes", () => {
       expect(findCommentsByPost).toHaveBeenCalled();
       expect(response.body.comments).toHaveLength(1);
       expect(response.body.totalPages).toBe(1);
+    });
+
+    it("returns nested comments when includeReplies is true", async () => {
+      findCommentsTreeByPost.mockResolvedValue([
+        {
+          _id: "root",
+          postId: "post-1",
+          content: "Root",
+          replies: [
+            { _id: "child", postId: "post-1", content: "Child", replies: [] },
+          ],
+        },
+      ]);
+      countCommentsByPost.mockResolvedValue(2);
+
+      const response = await request(app)
+        .get("/api/comments")
+        .query({ postId: "post-1", includeReplies: "true" });
+
+      expect(response.statusCode).toBe(200);
+      expect(findCommentsTreeByPost).toHaveBeenCalledWith("post-1");
+      expect(response.body.comments).toHaveLength(1);
+      expect(response.body.totalComments).toBe(2);
     });
   });
 

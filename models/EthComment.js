@@ -52,6 +52,24 @@ async function createComment({
     throw new Error(`Comment exceeds the ${MAX_COMMENT_LENGTH} character limit`);
   }
 
+  let parentComment = null;
+
+  if (parentId) {
+    parentComment = await findCommentById(parentId);
+
+    if (!parentComment) {
+      const error = new Error("Parent comment not found");
+      error.status = 404;
+      throw error;
+    }
+
+    if (parentComment.postId !== postId) {
+      const error = new Error("Parent comment belongs to a different post");
+      error.status = 400;
+      throw error;
+    }
+  }
+
   const collection = getCommentsCollection();
   const now = new Date().toISOString();
   const document = {
@@ -61,7 +79,7 @@ async function createComment({
     username: username || "Anonymous",
     text: content,
     content,
-    parentId: parentId || null,
+    parentId: parentComment ? parentComment._id : null,
     likes: typeof likes === "number" && likes >= 0 ? likes : 0,
     createdAt: now,
     updatedAt: now,
@@ -148,10 +166,67 @@ async function deleteCommentById(id) {
   }
 }
 
+async function findCommentsTreeByPost(postId) {
+  if (!postId) {
+    return [];
+  }
+
+  const cursor = await db.query(aql`
+    FOR comment IN ${getCommentsCollection()}
+      FILTER comment.postId == ${postId}
+      SORT comment.createdAt ASC
+      RETURN comment
+  `);
+
+  const documents = await cursor.all();
+  if (!documents.length) {
+    return [];
+  }
+
+  const nodes = new Map();
+
+  for (const doc of documents) {
+    const mapped = mapDocumentToResponse(doc);
+    if (!mapped) {
+      continue;
+    }
+    nodes.set(mapped._id, { ...mapped, replies: [] });
+  }
+
+  const roots = [];
+
+  for (const node of nodes.values()) {
+    if (node.parentId && nodes.has(node.parentId)) {
+      nodes.get(node.parentId).replies.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  const sortByDateDesc = (items) => {
+    items.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    for (const item of items) {
+      if (Array.isArray(item.replies) && item.replies.length) {
+        sortByDateDesc(item.replies);
+      }
+    }
+  };
+
+  sortByDateDesc(roots);
+
+  return roots;
+}
+
 module.exports = {
   createComment,
   findCommentsByPost,
   countCommentsByPost,
   findCommentById,
   deleteCommentById,
+  findCommentsTreeByPost,
 };
