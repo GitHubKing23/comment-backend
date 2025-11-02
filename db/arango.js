@@ -42,13 +42,14 @@ const collectionsToEnsure = [
   return acc;
 }, []);
 
-const db = new Database({ url: databaseUrl });
+const db = new Database({
+  url: databaseUrl,
+  databaseName: ARANGO_DATABASE,
+});
 
 if (ARANGO_USERNAME && ARANGO_PASSWORD) {
   db.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
 }
-
-db.useDatabase(ARANGO_DATABASE);
 
 async function ensureCollection({ name, indexes = [] }) {
   const collection = db.collection(name);
