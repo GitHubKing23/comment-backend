@@ -1,71 +1,31 @@
-require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
 const http = require("http");
 const socketIo = require("socket.io");
 
-// Import routes
-const fetchComments = require("./routes/fetchComments");
-const createComment = require("./routes/createComment");
-const deleteComment = require("./routes/deleteComment");
+const { app, allowedOrigins } = require("./app");
+const { initializeDatabase } = require("./db/arango");
 
-const app = express();
 const server = http.createServer(app);
 
-// ✅ Allowed Origins for CORS & Socket.IO
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://sportifyinsider.com"
-];
-
-// Setup Socket.IO with CORS
 const io = socketIo(server, {
   cors: {
     origin: allowedOrigins,
     methods: ["GET", "POST", "DELETE"],
-    credentials: false    // Set to false unless using cookies
-  }
-});
-app.set('io', io);
-
-// ✅ Simplified CORS Middleware
-app.use(cors({
-  origin: allowedOrigins,
-  methods: ["GET", "POST", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: false   // Matches frontend config
-}));
-
-// Body Parser
-app.use(express.json());
-
-// ✅ Health Check Routes
-app.get("/", (req, res) => {
-  res.send("✅ Comment API is live!");
+    credentials: false,
+  },
 });
 
-app.get("/api/comments/health", (req, res) => {
-  res.json({ status: "✅ Comment API is healthy!" });
-});
+app.set("io", io);
 
-// ✅ API Routes
-app.use("/api/comments", fetchComments);
-app.use("/api/comments", createComment);
-app.use("/api/comments", deleteComment);
+const PORT = parseInt(process.env.PORT, 10) || 5004;
+const HOST = process.env.HOST || process.env.VPS_ADDRESS || "0.0.0.0";
 
-// ✅ MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log("✅ Connected to MongoDB");
-}).catch((err) => {
-    console.error("❌ MongoDB connection failed:", err);
-});
-
-// ✅ Start Server
-const PORT = process.env.PORT || 5004;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Comment API running on http://0.0.0.0:${PORT}`);
-});
+initializeDatabase()
+  .then(() => {
+    server.listen(PORT, HOST, () => {
+      console.log(`🚀 Comment API running on http://${HOST}:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  });

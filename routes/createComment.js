@@ -1,34 +1,23 @@
 // C:\Users\User\comment-backend\routes\createComment.js
 const express = require("express");
 const router = express.Router();
-const Comment = require("../models/EthComment");
-const jwt = require("jsonwebtoken");
+const authenticate = require("../middleware/authenticate");
+const { createComment } = require("../models/EthComment");
 
 const MAX_COMMENT_LENGTH = 200;
 
-const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  console.log(`[authenticate] Authorization header: ${authHeader || "none"}`);
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.warn("[authenticate] No token provided");
-    return res.status(401).json({ message: "Unauthorized: No token provided" });
-  }
-
-  const token = authHeader.split(" ")[1];
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log(`[authenticate] Decoded token:`, decoded);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    console.error(`[authenticate] JWT Verification Failed: ${err.message}`);
-    return res.status(401).json({ message: `Unauthorized: Invalid token - ${err.message}` });
-  }
-};
-
 router.post("/", authenticate, async (req, res) => {
-  const { content, postId } = req.body;
+  const {
+    postId,
+    content: bodyContent,
+    text: bodyText,
+    parentId,
+    likes,
+    metadata,
+  } = req.body;
+
+  const content = typeof bodyContent === "string" ? bodyContent : bodyText;
+
   console.log(`[createComment] postId: ${postId}, content: ${content?.slice(0, 50)}...`);
 
   if (!content || !postId) {
@@ -41,19 +30,48 @@ router.post("/", authenticate, async (req, res) => {
     return res.status(400).json({ message: `Comment exceeds the ${MAX_COMMENT_LENGTH} character limit` });
   }
 
+  if (!req.user?.ethereumAddress) {
+    console.warn("[createComment] Missing ethereum address on authenticated user");
+    return res.status(400).json({ message: "Missing ethereum address for user" });
+  }
+
+  const sanitizedParentId =
+    typeof parentId === "string" && parentId.trim().length
+      ? parentId.trim()
+      : null;
+
+  const initialLikes = typeof likes === "number" && likes >= 0 ? likes : undefined;
+  const userId = req.user.userId || req.user.id || req.user.ethereumAddress;
+
   try {
-    const newComment = new Comment({
+    const savedComment = await createComment({
       postId,
       ethereumAddress: req.user.ethereumAddress,
       username: req.user.username || "Anonymous",
       content,
+      parentId: sanitizedParentId,
+      userId,
+      likes: initialLikes,
+      metadata,
     });
 
-    const savedComment = await newComment.save();
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("comment:created", savedComment);
+    }
+
     console.log("[createComment] Comment saved:", savedComment._id);
     res.status(201).json(savedComment);
   } catch (err) {
     console.error("[createComment] Error creating comment:", err);
+    if (err.message?.includes("character")) {
+      return res.status(400).json({ message: err.message });
+    }
+
+    if (err.message?.includes("Missing required")) {
+      return res.status(400).json({ message: err.message });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 });

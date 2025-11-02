@@ -1,6 +1,8 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const Comment = require("../models/EthComment");
+const {
+  findCommentsByPost,
+  countCommentsByPost,
+} = require("../models/EthComment");
 
 const router = express.Router();
 
@@ -15,29 +17,19 @@ router.get('/', async (req, res) => {
     return res.status(400).json({ message: "Missing postId" });
   }
 
-  // Validate ObjectId format
-  if (!mongoose.Types.ObjectId.isValid(postId)) {
-    console.warn(`[fetchComments] Invalid ObjectId format: ${postId}`);
-    return res.status(400).json({ message: "Invalid postId format" });
-  }
-
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
   const skip = (page - 1) * limit;
 
   try {
-    const comments = await Comment.find({ postId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Comment.countDocuments({ postId });
+    const comments = await findCommentsByPost(postId, { skip, limit });
+    const total = await countCommentsByPost(postId);
 
     console.log(`[fetchComments] Found ${comments.length} comments for postId ${postId}`);
 
     return res.status(200).json({
       comments,
-      totalPages: Math.ceil(total / limit),
+      totalPages: total ? Math.ceil(total / limit) : 0,
       currentPage: page,
     });
   } catch (err) {
