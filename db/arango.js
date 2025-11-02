@@ -42,14 +42,35 @@ const collectionsToEnsure = [
   return acc;
 }, []);
 
-const db = new Database({ url: databaseUrl });
+const rootDb = new Database({ url: databaseUrl });
 
 if (ARANGO_USERNAME && ARANGO_PASSWORD) {
-  db.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
+  rootDb.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
 }
 
+let db = rootDb;
+
 if (ARANGO_DATABASE) {
-  db.useDatabase(ARANGO_DATABASE);
+  if (typeof rootDb.useDatabase === "function") {
+    try {
+      rootDb.useDatabase(ARANGO_DATABASE);
+    } catch (error) {
+      console.error(
+        `❌ Failed to select database via useDatabase('${ARANGO_DATABASE}'):`,
+        error.message
+      );
+      console.warn("Attempting legacy database() fallback…");
+      if (typeof rootDb.database === "function") {
+        db = rootDb.database(ARANGO_DATABASE);
+      }
+    }
+  } else if (typeof rootDb.database === "function") {
+    db = rootDb.database(ARANGO_DATABASE);
+  } else {
+    console.warn(
+      "⚠️ Current arangojs version does not expose useDatabase/database helpers; using default database"
+    );
+  }
 } else {
   console.warn("⚠️ ARANGO_DATABASE is not set. Falling back to default database");
 }
