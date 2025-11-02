@@ -44,6 +44,8 @@ const collectionsToEnsure = [
 
 const rootDb = new Database({ url: databaseUrl });
 
+const hasCredentials = ARANGO_USERNAME && ARANGO_PASSWORD;
+
 if (ARANGO_USERNAME && ARANGO_PASSWORD) {
   rootDb.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
 }
@@ -62,10 +64,16 @@ if (ARANGO_DATABASE) {
       console.warn("Attempting legacy database() fallback…");
       if (typeof rootDb.database === "function") {
         db = rootDb.database(ARANGO_DATABASE);
+        if (hasCredentials && typeof db.useBasicAuth === "function") {
+          db.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
+        }
       }
     }
   } else if (typeof rootDb.database === "function") {
     db = rootDb.database(ARANGO_DATABASE);
+    if (hasCredentials && typeof db.useBasicAuth === "function") {
+      db.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
+    }
   } else {
     console.warn(
       "⚠️ Current arangojs version does not expose useDatabase/database helpers; using default database"
