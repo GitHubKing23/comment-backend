@@ -42,13 +42,16 @@ const collectionsToEnsure = [
   return acc;
 }, []);
 
-const db = new Database({
-  url: databaseUrl,
-  databaseName: ARANGO_DATABASE,
-});
+const db = new Database({ url: databaseUrl });
 
 if (ARANGO_USERNAME && ARANGO_PASSWORD) {
   db.useBasicAuth(ARANGO_USERNAME, ARANGO_PASSWORD);
+}
+
+if (ARANGO_DATABASE) {
+  db.useDatabase(ARANGO_DATABASE);
+} else {
+  console.warn("⚠️ ARANGO_DATABASE is not set. Falling back to default database");
 }
 
 async function ensureCollection({ name, indexes = [] }) {
@@ -66,11 +69,19 @@ async function ensureCollection({ name, indexes = [] }) {
 
 async function initializeDatabase() {
   try {
+    const collections = await db.listCollections();
+    console.log(
+      `✅ Connected to ArangoDB: ${ARANGO_DATABASE || "_system"} (collections: ${collections.length})`
+    );
+
     for (const collectionConfig of collectionsToEnsure) {
       await ensureCollection(collectionConfig);
     }
   } catch (error) {
-    console.error("❌ Failed to initialise ArangoDB collection:", error.message);
+    console.error(
+      `❌ Failed to initialise ArangoDB database '${ARANGO_DATABASE || "_system"}':`,
+      error.message
+    );
     console.error(
       "Ensure database '%s' exists and credentials allow access.",
       ARANGO_DATABASE
