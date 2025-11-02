@@ -3,7 +3,7 @@ const { Database, aql } = require("arangojs");
 const {
   ARANGO_URL,
   RANGO_URL,
-  ARANGO_DATABASE = "comments",
+  ARANGO_DATABASE = "COMMENTSBACKEND",
   ARANGO_USERNAME,
   ARANGO_PASSWORD,
   ARANGO_COMMENTS_COLLECTION,
