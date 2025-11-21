@@ -1,7 +1,7 @@
 const request = require("supertest");
 const jwt = require("jsonwebtoken");
 
-jest.mock("../models/EthComment", () => ({
+jest.mock("../models/Comment", () => ({
   createComment: jest.fn(),
   findCommentsByPost: jest.fn(),
   countCommentsByPost: jest.fn(),
@@ -20,7 +20,7 @@ const {
   findCommentById,
   deleteCommentById,
   findCommentsTreeByPost,
-} = require("../models/EthComment");
+} = require("../models/Comment");
 
 const { app } = require("../app");
 
@@ -41,16 +41,16 @@ describe("Comment routes", () => {
 
     it("creates a comment for authenticated users", async () => {
       const token = jwt.sign(
-        { ethereumAddress: "0xabc", username: "Alice" },
+        { email: "alice@example.com", username: "Alice" },
         process.env.JWT_SECRET
       );
 
       createComment.mockResolvedValue({
         _id: "123",
         postId: "post-1",
-        ethereumAddress: "0xabc",
+        email: "alice@example.com",
         username: "Alice",
-        userId: "0xabc",
+        userId: "alice@example.com",
         content: "Great post",
         text: "Great post",
         likes: 0,
@@ -66,10 +66,10 @@ describe("Comment routes", () => {
       expect(createComment).toHaveBeenCalledWith(
         expect.objectContaining({
           postId: "post-1",
-          ethereumAddress: "0xabc",
+          email: "alice@example.com",
           username: "Alice",
           content: "Great post",
-          userId: "0xabc",
+          userId: "alice@example.com",
           parentId: null,
         })
       );
@@ -81,14 +81,14 @@ describe("Comment routes", () => {
 
     it("creates a reply when parentId is provided", async () => {
       const token = jwt.sign(
-        { ethereumAddress: "0xabc", username: "Alice", userId: "user-1" },
+        { email: "alice@example.com", username: "Alice", userId: "user-1" },
         process.env.JWT_SECRET
       );
 
       createComment.mockResolvedValue({
         _id: "456",
         postId: "post-1",
-        ethereumAddress: "0xabc",
+        email: "alice@example.com",
         username: "Alice",
         userId: "user-1",
         content: "Reply",
@@ -174,14 +174,14 @@ describe("Comment routes", () => {
 
     it("rejects deleting another user's comment", async () => {
       const token = jwt.sign(
-        { ethereumAddress: "0xabc", username: "Alice" },
+        { email: "alice@example.com", username: "Alice" },
         process.env.JWT_SECRET
       );
 
       findCommentById.mockResolvedValue({
         _id: "123",
         postId: "post-1",
-        ethereumAddress: "0xdef",
+        userId: "another-user",
         content: "Hello",
       });
 
@@ -195,14 +195,14 @@ describe("Comment routes", () => {
 
     it("allows owners to delete their comment", async () => {
       const token = jwt.sign(
-        { ethereumAddress: "0xabc", username: "Alice" },
+        { email: "alice@example.com", username: "Alice" },
         process.env.JWT_SECRET
       );
 
       findCommentById.mockResolvedValue({
         _id: "123",
         postId: "post-1",
-        ethereumAddress: "0xabc",
+        userId: "alice@example.com",
         content: "Hello",
       });
       deleteCommentById.mockResolvedValue(true);

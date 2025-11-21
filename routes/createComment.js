@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const authenticate = require("../middleware/authenticate");
-const { createComment } = require("../models/EthComment");
+const { createComment } = require("../models/Comment");
 
 const MAX_COMMENT_LENGTH = 200;
 
@@ -30,9 +30,9 @@ router.post("/", authenticate, async (req, res) => {
     return res.status(400).json({ message: `Comment exceeds the ${MAX_COMMENT_LENGTH} character limit` });
   }
 
-  if (!req.user?.ethereumAddress) {
-    console.warn("[createComment] Missing ethereum address on authenticated user");
-    return res.status(400).json({ message: "Missing ethereum address for user" });
+  if (!req.user?.email) {
+    console.warn("[createComment] Missing email on authenticated user");
+    return res.status(400).json({ message: "Missing email for user" });
   }
 
   const sanitizedParentId =
@@ -41,12 +41,13 @@ router.post("/", authenticate, async (req, res) => {
       : null;
 
   const initialLikes = typeof likes === "number" && likes >= 0 ? likes : undefined;
-  const userId = req.user.userId || req.user.id || req.user.ethereumAddress;
+  const normalizedEmail = req.user.email.trim().toLowerCase();
+  const userId = req.user.userId || req.user.id || normalizedEmail;
 
   try {
     const savedComment = await createComment({
       postId,
-      ethereumAddress: req.user.ethereumAddress,
+      email: normalizedEmail,
       username: req.user.username || "Anonymous",
       content,
       parentId: sanitizedParentId,

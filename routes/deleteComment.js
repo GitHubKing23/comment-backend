@@ -3,7 +3,7 @@ const authenticate = require("../middleware/authenticate");
 const {
   findCommentById,
   deleteCommentById,
-} = require("../models/EthComment");
+} = require("../models/Comment");
 
 const router = express.Router();
 
@@ -14,7 +14,11 @@ router.delete("/:id", authenticate, async (req, res) => {
       return res.status(404).json({ message: "Comment not found" });
     }
 
-    if (comment.ethereumAddress !== req.user.ethereumAddress) {
+    const commentOwnerId = comment.userId || comment.email;
+    const requestUserId =
+      req.user.userId || req.user.id || (req.user.email || "").trim().toLowerCase();
+
+    if (!commentOwnerId || !requestUserId || commentOwnerId !== requestUserId) {
       return res.status(403).json({ message: "Forbidden: Not your comment" });
     }
 

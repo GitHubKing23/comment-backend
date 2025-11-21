@@ -3,7 +3,7 @@ const path = require('path');
 
 const filesToProcess = [
   path.resolve('C:/Users/User/comment-backend/server.js'),
-  path.resolve('C:/Users/User/comment-backend/models/EthComment.js'),
+  path.resolve('C:/Users/User/comment-backend/models/Comment.js'),
   path.resolve('C:/Users/User/comment-backend/.env'),
   path.resolve('C:/Users/User/comment-backend/package.json')
 ];

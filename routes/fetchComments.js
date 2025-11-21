@@ -3,7 +3,7 @@ const {
   findCommentsByPost,
   countCommentsByPost,
   findCommentsTreeByPost,
-} = require("../models/EthComment");
+} = require("../models/Comment");
 
 const router = express.Router();
 

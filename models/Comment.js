@@ -36,7 +36,7 @@ function mapDocumentToResponse(doc = {}) {
 
 async function createComment({
   postId,
-  ethereumAddress,
+  email,
   username,
   content,
   parentId,
@@ -44,7 +44,7 @@ async function createComment({
   likes,
   metadata,
 }) {
-  if (!postId || !ethereumAddress || !content) {
+  if (!postId || !email || !content) {
     throw new Error("Missing required comment fields");
   }
 
@@ -72,10 +72,15 @@ async function createComment({
 
   const collection = getCommentsCollection();
   const now = new Date().toISOString();
+  const normalizedEmail = (email || "").trim().toLowerCase();
+
+  if (!normalizedEmail.length) {
+    throw new Error("Missing required comment fields");
+  }
   const document = {
     postId,
-    ethereumAddress: ethereumAddress.toLowerCase(),
-    userId: userId || ethereumAddress.toLowerCase(),
+    email: normalizedEmail,
+    userId: userId || normalizedEmail,
     username: username || "Anonymous",
     text: content,
     content,
